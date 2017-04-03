@@ -125,19 +125,23 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
   float dt = (measurement_pack.timestamp_ - previous_timestamp_)/ 1000000.0;	//dt - expressed in seconds
   previous_timestamp_ = measurement_pack.timestamp_;
 
-  //Modify the F matrix so that the time is integrated
-  ekf_.F_(0, 2) = dt;
-  ekf_.F_(1, 3) = dt;
+  // Avoid prediction step if measurements are approximately coincident in time, in order to prevent arithmetic problems.
+  if ( dt > 0.001 )
+  {
+	  //Modify the F matrix so that the time is integrated
+	  ekf_.F_(0, 2) = dt;
+	  ekf_.F_(1, 3) = dt;
 
-  float dt2 = dt*dt;
-  float dt3 = dt*dt2;
-  float dt4 = dt2*dt2;
-  ekf_.Q_ << dt4/4.0f*noise_ax, 0, dt3/2.0f*noise_ax, 0,
-		     0, dt4/4.0f*noise_ay, 0, dt3/2.0f*noise_ay,
-		     dt3/2.0f*noise_ax, 0, dt2*noise_ax, 0,
-		  	 0, dt3/2.0f*noise_ay, 0, dt2*noise_ay;
+	  float dt2 = dt*dt;
+	  float dt3 = dt*dt2;
+	  float dt4 = dt2*dt2;
+	  ekf_.Q_ << dt4/4.0f*noise_ax, 0, dt3/2.0f*noise_ax, 0,
+				 0, dt4/4.0f*noise_ay, 0, dt3/2.0f*noise_ay,
+				 dt3/2.0f*noise_ax, 0, dt2*noise_ax, 0,
+				 0, dt3/2.0f*noise_ay, 0, dt2*noise_ay;
 
-  ekf_.Predict();
+	  ekf_.Predict();
+  }
 
   /*****************************************************************************
    *  Update

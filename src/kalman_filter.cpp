@@ -52,21 +52,28 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
 	float vx = x_(2);
 	float vy = x_(3);
 
-	VectorXd hx = VectorXd(3);
-	hx(0) = sqrt(px*px+py*py);
-	hx(1) = atan2(py,px);
-	hx(2) = (px*vx+py*vy)/hx(0);
+	float range = sqrt(px*px+py*py);
 
-	VectorXd y = z-hx;
+	// Avoid update step if range is too small, in order to prevent arithmetic problems (dividing be zero).
+	if (range > 0.0001)
+	{
+		VectorXd hx = VectorXd(3);
+		hx(0) = range;
+		hx(1) = atan2(py,px);
+		hx(2) = (px*vx+py*vy)/range;
 
-	// Make sure that the resulting angle, phi, is between -pi and pi
-	y(1) = fmod((y(1)+M_PI),(2*M_PI)) - M_PI;
+		VectorXd y = z-hx;
 
-	MatrixXd S = H_*P_*H_.transpose()+R_;
-	MatrixXd K = P_*H_.transpose()*S.inverse();
-	MatrixXd I = MatrixXd::Identity(H_.cols(),H_.cols());
+		// Make sure that the resulting angle, phi, is between -pi and pi
+		y(1) = fmod((y(1)+M_PI),(2*M_PI)) - M_PI;
 
-//	// new state
-	x_ = x_+K*y;
-	P_ = (I-K*H_)*P_;
+		MatrixXd PHt = P_ * H_.transpose();
+		MatrixXd S = H_*PHt+R_;
+		MatrixXd K = PHt*S.inverse();
+		MatrixXd I = MatrixXd::Identity(H_.cols(),H_.cols());
+
+		// new state
+		x_ = x_+K*y;
+		P_ = (I-K*H_)*P_;
+	}
 }
